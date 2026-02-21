@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [deliverable-3]
+  pull_request:
+    branches: [deliverable-3]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: pizza
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for MySQL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-client
+          until mysql -h 127.0.0.1 -uroot -proot -e "SELECT 1"; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_DATABASE: pizza
+          JWT_SECRET: test-secret
+        run: npm test
