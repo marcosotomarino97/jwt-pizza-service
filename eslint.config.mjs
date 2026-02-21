@@ -19,7 +19,14 @@ export default [
     },
     rules: {
       'prettier/prettier': 'error',
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+        },
+      ],
     },
   },
 
