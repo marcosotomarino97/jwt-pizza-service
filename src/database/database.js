@@ -1,6 +1,14 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
-const config = require('../config.js');
+
+const config = (() => {
+  try {
+    return require('../config.js'); // local override (untracked)
+  } catch (e) {
+    return require('../config.template.js'); // CI-safe fallback (committed)
+  }
+})();
+
 const { StatusCodeError } = require('../endpointHelper.js');
 const { Role } = require('../model/model.js');
 const dbModel = require('./dbModel.js');

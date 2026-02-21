@@ -1,5 +1,13 @@
 const express = require('express');
-const config = require('../config.js');
+
+const config = (() => {
+  try {
+    return require('../config.js'); // local override (untracked)
+  } catch (e) {
+    return require('../config.template.js'); // CI-safe fallback (committed)
+  }
+})();
+
 const { Role, DB } = require('../database/database.js');
 const { authRouter } = require('./authRouter.js');
 const { asyncHandler, StatusCodeError } = require('../endpointHelper.js');

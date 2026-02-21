@@ -1,6 +1,14 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const config = require('../config.js');
+
+const config = (() => {
+  try {
+    return require('../config.js'); // local override (untracked)
+  } catch (e) {
+    return require('../config.template.js'); // CI-safe fallback (committed)
+  }
+})();
+
 const { asyncHandler } = require('../endpointHelper.js');
 const { DB, Role } = require('../database/database.js');
 
