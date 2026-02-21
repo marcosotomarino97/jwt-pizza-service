@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = (() => {
   try {
     return require('../config.js'); // local override (untracked)
-  } catch (e) {
+  } catch (_e) {
     return require('../config.template.js'); // CI-safe fallback (committed)
   }
 })();
