@@ -4,7 +4,13 @@ const orderRouter = require('./routes/orderRouter.js');
 const franchiseRouter = require('./routes/franchiseRouter.js');
 const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
-const config = require('./config.js');
+const config = (() => {
+  try {
+    return require('./config.js'); // local override (untracked)
+  } catch (_e) {
+    return require('./config.template.js'); // CI-safe fallback (committed)
+  }
+})();
 
 const app = express();
 app.use(express.json());
