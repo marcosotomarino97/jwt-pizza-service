@@ -7,7 +7,11 @@ function randomName() {
 }
 
 async function registerUser(password = 'a') {
-  const user = { name: randomName(), email: `${randomName()}@test.com`, password };
+  const user = {
+    name: randomName(),
+    email: `${randomName()}@test.com`,
+    password,
+  };
   const res = await request(app).post('/api/auth').send(user);
   expect(res.status).toBe(200);
   return { ...user, id: res.body.user.id, token: res.body.token };
