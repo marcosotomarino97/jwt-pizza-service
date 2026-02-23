@@ -1,11 +1,10 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
-
 const config = (() => {
   try {
-    return require('../config.js'); // local override (untracked)
+    return require('../config.js'); 
   } catch (_e) {
-    return require('../config.template.js'); // CI-safe fallback (committed)
+    return require('../config.template.js'); 
   }
 })();
 
@@ -14,8 +13,10 @@ const { Role } = require('../model/model.js');
 const dbModel = require('./dbModel.js');
 class DB {
   constructor() {
-    this.initialized = this.initializeDatabase();
-  }
+  this.initialized = process.env.NODE_ENV === 'test'
+    ? Promise.resolve()
+    : this.initializeDatabase();
+}
 
   async getMenu() {
     const connection = await this.getConnection();
@@ -138,7 +139,46 @@ class DB {
       connection.end();
     }
   }
+  async getUsers(page = 1, limit = 10, name = '*') {
+  const connection = await this.getConnection();
+  try {
+    const safePage = Number(page) > 0 ? Number(page) : 1;
+    const safeLimit = Number(limit) > 0 ? Number(limit) : 10;
 
+    const offset = (safePage - 1) * safeLimit;
+
+    let whereClause = '';
+    if (name && name !== '*') {
+      const safeName = name.replace(/'/g, "''"); // basic safety
+      whereClause = `WHERE name LIKE '%${safeName}%'`;
+    }
+
+    const users = await this.query(
+      connection,
+      `SELECT id, name, email
+       FROM user
+       ${whereClause}
+       ORDER BY id
+       LIMIT ${safeLimit + 1} OFFSET ${offset}`
+    );
+
+    return users;
+  } finally {
+    connection.end();
+  }
+}
+async deleteUser(userId) {
+  const connection = await this.getConnection();
+  try {
+    const [result] = await connection.execute(
+      'DELETE FROM user WHERE id = ?',
+      [userId]
+    );
+    return result.affectedRows > 0;
+  } finally {
+    connection.end();
+  }
+}
   async loginUser(userId, token) {
     token = this.getTokenSignature(token);
     const connection = await this.getConnection();
@@ -438,6 +478,7 @@ class DB {
       password: config.db.connection.password,
       connectTimeout: config.db.connection.connectTimeout,
       decimalNumbers: true,
+      charset: 'UTF8MB4_GENERAL_CI',
     });
     if (setUse) {
       await connection.query(`USE ${config.db.connection.database}`);
@@ -474,7 +515,7 @@ class DB {
             password: 'admin',
             roles: [{ role: Role.Admin }],
           };
-          this.addUser(defaultAdmin);
+          await this.addUser(defaultAdmin);
         }
       } finally {
         connection.end();

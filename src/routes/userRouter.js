@@ -64,22 +64,44 @@ userRouter.put(
   })
 );
 
-// deleteUser
-userRouter.delete(
-  '/:userId',
-  authRouter.authenticateToken,
-  asyncHandler(async (req, res) => {
-    res.json({ message: 'not implemented' });
-  })
-);
 
 // listUsers
 userRouter.get(
   '/',
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
-    res.json({ message: 'not implemented', users: [], more: false });
+    if (!req.user.isRole(Role.Admin)) {
+      return res.status(403).json({ message: 'unauthorized' });
+    }
+
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 10);
+    const name = req.query.name ?? '*';
+
+    const usersPlus = await DB.getUsers(page, limit, name);
+
+    const more = usersPlus.length > limit;
+    const users = more ? usersPlus.slice(0, limit) : usersPlus;
+
+    res.json({ users, more });
   })
 );
 
+// deleteUser
+userRouter.delete(
+  '/:userId',
+  authRouter.authenticateToken,
+  asyncHandler(async (req, res) => {
+    const userId = Number(req.params.userId);
+
+    // non-admin cannot delete other users
+    if (!req.user.isRole(Role.Admin) && req.user.id !== userId) {
+      return res.status(403).json({ message: 'unauthorized' });
+    }
+
+    await DB.deleteUser(userId);
+
+    res.status(200).json({ message: 'deleted' });
+  })
+);
 module.exports = userRouter;
