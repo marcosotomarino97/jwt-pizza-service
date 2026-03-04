@@ -1,5 +1,4 @@
 {
-  
   "name": "jwt-pizza-service",
   "description": "Backend service for making JWT pizzas",
   "version": "1.0.0",
@@ -30,8 +29,8 @@
     "supertest": "^7.2.2"
   },
   "overrides": {
-  "mysql2": {
-    "iconv-lite": "0.6.3"
+    "mysql2": {
+      "iconv-lite": "0.6.3"
+    }
   }
-}
 }
