@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: ['main']
+    branches: ["main"]
   pull_request:
-    branches: ['main']
+    branches: ["main"]
   workflow_dispatch:
 
 jobs:
@@ -32,8 +32,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -42,13 +42,43 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mysql-client
-          until mysql -h 127.0.0.1 -uroot -proot -e "SELECT 1"; do
+          until mysqladmin ping -h 127.0.0.1 -uroot -proot --silent; do
             echo "Waiting for MySQL..."
             sleep 2
           done
-      - name: Initialize database tables
-        run: node src/database/dbModel.js
-        
+
+      - name: Create CI config.js
+        run: |
+          cat > src/config.js <<'EOF'
+          module.exports = {
+            jwtSecret: process.env.JWT_SECRET || 'test-secret',
+            db: {
+              connection: {
+                host: process.env.DB_HOST || '127.0.0.1',
+                user: process.env.DB_USER || 'root',
+                password: process.env.DB_PASSWORD || 'root',
+                database: process.env.DB_DATABASE || 'pizza',
+                connectTimeout: 60000,
+              },
+              listPerPage: 10,
+            },
+            factory: {
+              url: process.env.FACTORY_URL || 'https://pizza-factory.cs329.click',
+              apiKey: process.env.FACTORY_API_KEY || 'test-api-key',
+            },
+          };
+          EOF
+
+      - name: Initialize database schema
+        env:
+          DB_HOST: 127.0.0.1
+          DB_USER: root
+          DB_PASSWORD: root
+          DB_DATABASE: pizza
+          JWT_SECRET: test-secret
+        run: |
+          NODE_ENV=development node -e "const { DB } = require('./src/database/database.js'); DB.initializeDatabase().then(()=>{console.log('DB initialized'); process.exit(0);}).catch((e)=>{console.error(e); process.exit(1);});"
+
       - name: Run ESLint
         run: npm run lint
 
