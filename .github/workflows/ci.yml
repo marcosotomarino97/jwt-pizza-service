@@ -46,7 +46,9 @@ jobs:
             echo "Waiting for MySQL..."
             sleep 2
           done
-
+      - name: Initialize database tables
+        run: node src/database/dbModel.js
+        
       - name: Run ESLint
         run: npm run lint
 
