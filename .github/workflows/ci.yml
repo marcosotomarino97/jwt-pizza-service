@@ -66,6 +66,12 @@ jobs:
               url: process.env.FACTORY_URL || 'https://pizza-factory.cs329.click',
               apiKey: process.env.FACTORY_API_KEY || 'test-api-key',
             },
+            metrics: {
+              source: 'jwt-pizza-service-ci',
+              endpointUrl: '',
+              accountId: '',
+              apiKey: '',
+            },
           };
           EOF
 

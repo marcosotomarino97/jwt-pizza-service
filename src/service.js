@@ -6,9 +6,9 @@ const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
 const config = (() => {
   try {
-    return require('./config.js'); // local override (untracked)
+    return require('./config.js'); // local override 
   } catch (_e) {
-    return require('./config.template.js'); // CI-safe fallback (committed)
+    return require('./config.template.js'); // CI-safe fallback
   }
 })();
 
