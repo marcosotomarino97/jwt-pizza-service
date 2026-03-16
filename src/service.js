@@ -4,7 +4,7 @@ const orderRouter = require('./routes/orderRouter.js');
 const franchiseRouter = require('./routes/franchiseRouter.js');
 const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
-const metrics = require('./metrics')
+const metrics = require('./metrics');
 const config = (() => {
   try {
     return require('./config.js');
@@ -14,7 +14,7 @@ const config = (() => {
 })();
 
 const app = express();
-app.use(metrics.requestTracker)
+app.use(metrics.requestTracker);
 app.use(express.json());
 app.use(setAuthUser);
 app.use((req, res, next) => {
