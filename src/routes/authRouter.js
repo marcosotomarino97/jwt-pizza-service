@@ -1,5 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const metrics = require('../metrics');
 
 const config = (() => {
   try {
@@ -107,10 +108,14 @@ authRouter.put(
   asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const user = await DB.getUser(email, password);
+
+    if (!user) {
+      metrics.recordAuth(false);
+    }
     const auth = await setAuth(user);
     res.json({ user: user, token: auth });
-  })
-);
+      })
+    );
 
 // logout
 authRouter.delete(
@@ -125,6 +130,9 @@ authRouter.delete(
 async function setAuth(user) {
   const token = jwt.sign(user, config.jwtSecret);
   await DB.loginUser(user.id, token);
+
+  metrics.recordAuth(true, user.id);
+
   return token;
 }
 
@@ -132,6 +140,10 @@ async function clearAuth(req) {
   const token = readAuthToken(req);
   if (token) {
     await DB.logoutUser(token);
+
+    if (req.user && req.user.id) {
+      metrics.logoutUser(req.user.id);
+    }
   }
 }
 
