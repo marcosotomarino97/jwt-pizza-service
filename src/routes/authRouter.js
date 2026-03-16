@@ -114,8 +114,8 @@ authRouter.put(
     }
     const auth = await setAuth(user);
     res.json({ user: user, token: auth });
-      })
-    );
+  })
+);
 
 // logout
 authRouter.delete(
