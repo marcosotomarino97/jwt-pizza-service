@@ -159,7 +159,7 @@ async function reportMetrics() {
     makeSumMetric('pizzas_sold_total', metricsState.pizzas.sold, '1'),
     makeSumMetric('pizza_failures_total', metricsState.pizzas.failures, '1'),
     makeSumMetric('pizza_revenue_total', metricsState.pizzas.revenue, '1'),
-    
+
     makeSumMetric(
       'request_latency_ms_total',
       metricsState.latency.endpointsTotal,
