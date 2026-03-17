@@ -69,4 +69,14 @@ describe('metrics module', () => {
 
     expect(config.metrics.endpointUrl).toBe('http://localhost');
   });
+
+  test('metrics module loads and exports expected functions', () => {
+    const metrics = require('./metrics');
+
+    expect(metrics).toBeDefined();
+    expect(typeof metrics.requestTracker).toBe('function');
+    expect(typeof metrics.recordAuth).toBe('function');
+    expect(typeof metrics.logoutUser).toBe('function');
+    expect(typeof metrics.recordPizzaPurchase).toBe('function');
+  });
 });
