@@ -149,9 +149,13 @@ async function reportMetrics() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization:
+          'Basic ' +
+          Buffer.from(
+            `${config.metrics.accountId}:${config.metrics.apiKey}`
+          ).toString('base64'),
       },
       body: JSON.stringify(payload),
-      auth: `${config.metrics.accountId}:${config.metrics.apiKey}`,
     });
   } catch (err) {
     console.error('Failed to send metrics:', err.message);
