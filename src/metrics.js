@@ -27,8 +27,8 @@ const metricsState = {
     revenue: 0,
   },
   latency: {
-    endpoints: [],
-    pizzaCreation: [],
+    endpointsTotal: 0,
+    pizzaCreationTotal: 0,
   },
   activeUsers: new Set(),
 };
@@ -44,7 +44,7 @@ function requestTracker(req, res, next) {
 
   res.on('finish', () => {
     const duration = Date.now() - start;
-    metricsState.latency.endpoints.push(duration);
+    metricsState.latency.endpointsTotal += duration;
   });
 
   next();
@@ -53,7 +53,9 @@ function requestTracker(req, res, next) {
 function recordAuth(success, userId = null) {
   if (success) {
     metricsState.auth.success++;
-    if (userId) metricsState.activeUsers.add(userId);
+    if (userId) {
+      metricsState.activeUsers.add(userId);
+    }
   } else {
     metricsState.auth.failure++;
   }
@@ -76,7 +78,7 @@ function recordPizzaPurchase({
     metricsState.pizzas.failures++;
   }
 
-  metricsState.latency.pizzaCreation.push(latency);
+  metricsState.latency.pizzaCreationTotal += latency;
 }
 
 function getCpuUsage() {
@@ -100,51 +102,82 @@ function getMemoryUsage() {
   return Math.round(((total - free) / total) * 100);
 }
 
+function metricDataPoint(value) {
+  return {
+    asInt: Math.round(value),
+    timeUnixNano: Date.now() * 1000000,
+    attributes: [
+      {
+        key: 'source',
+        value: { stringValue: config.metrics.source },
+      },
+    ],
+  };
+}
+
+function makeGaugeMetric(name, value, unit = '1') {
+  return {
+    name,
+    unit,
+    gauge: {
+      dataPoints: [metricDataPoint(value)],
+    },
+  };
+}
+
+function makeSumMetric(name, value, unit = '1') {
+  return {
+    name,
+    unit,
+    sum: {
+      dataPoints: [metricDataPoint(value)],
+      aggregationTemporality: 'AGGREGATION_TEMPORALITY_CUMULATIVE',
+      isMonotonic: true,
+    },
+  };
+}
+
 async function reportMetrics() {
   if (!config.metrics.endpointUrl) {
     return;
   }
+
+  const metrics = [
+    makeSumMetric('requests_total', metricsState.requests.total, '1'),
+    makeSumMetric('requests_get_total', metricsState.requests.GET, '1'),
+    makeSumMetric('requests_post_total', metricsState.requests.POST, '1'),
+    makeSumMetric('requests_put_total', metricsState.requests.PUT, '1'),
+    makeSumMetric('requests_delete_total', metricsState.requests.DELETE, '1'),
+
+    makeSumMetric('auth_success_total', metricsState.auth.success, '1'),
+    makeSumMetric('auth_failure_total', metricsState.auth.failure, '1'),
+
+    makeGaugeMetric('active_users', metricsState.activeUsers.size, '1'),
+    makeGaugeMetric('cpu_usage', getCpuUsage(), '%'),
+    makeGaugeMetric('memory_usage', getMemoryUsage(), '%'),
+
+    makeSumMetric('pizzas_sold_total', metricsState.pizzas.sold, '1'),
+    makeSumMetric('pizza_failures_total', metricsState.pizzas.failures, '1'),
+    makeSumMetric('pizza_revenue_total', metricsState.pizzas.revenue, '1'),
+    
+    makeSumMetric(
+      'request_latency_ms_total',
+      metricsState.latency.endpointsTotal,
+      'ms'
+    ),
+    makeSumMetric(
+      'pizza_latency_ms_total',
+      metricsState.latency.pizzaCreationTotal,
+      'ms'
+    ),
+  ];
 
   const payload = {
     resourceMetrics: [
       {
         scopeMetrics: [
           {
-            metrics: [
-              {
-                name: 'active_users',
-                gauge: {
-                  dataPoints: [
-                    {
-                      asInt: metricsState.activeUsers.size,
-                      timeUnixNano: Date.now() * 1000000,
-                    },
-                  ],
-                },
-              },
-              {
-                name: 'cpu_usage',
-                gauge: {
-                  dataPoints: [
-                    {
-                      asInt: getCpuUsage(),
-                      timeUnixNano: Date.now() * 1000000,
-                    },
-                  ],
-                },
-              },
-              {
-                name: 'memory_usage',
-                gauge: {
-                  dataPoints: [
-                    {
-                      asInt: getMemoryUsage(),
-                      timeUnixNano: Date.now() * 1000000,
-                    },
-                  ],
-                },
-              },
-            ],
+            metrics,
           },
         ],
       },
@@ -152,7 +185,7 @@ async function reportMetrics() {
   };
 
   try {
-    await fetch(config.metrics.endpointUrl, {
+    const response = await fetch(config.metrics.endpointUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -164,6 +197,11 @@ async function reportMetrics() {
       },
       body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('Failed to send metrics:', text);
+    }
   } catch (err) {
     console.error('Failed to send metrics:', err.message);
   }
