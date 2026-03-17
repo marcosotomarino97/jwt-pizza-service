@@ -34,7 +34,7 @@ const metricsState = {
 };
 
 function requestTracker(req, res, next) {
-  const start = Date.now();
+  const start = process.hrtime.bigint();
 
   metricsState.requests.total++;
 
@@ -43,8 +43,9 @@ function requestTracker(req, res, next) {
   }
 
   res.on('finish', () => {
-    const duration = Date.now() - start;
-    metricsState.latency.endpointsTotal += duration;
+    const durationNs = process.hrtime.bigint() - start;
+    const durationMs = Number(durationNs) / 1_000_000;
+    metricsState.latency.endpointsTotal += durationMs;
   });
 
   next();
@@ -175,12 +176,14 @@ async function reportMetrics() {
     makeSumMetric(
       'request_latency_ms_total',
       metricsState.latency.endpointsTotal,
-      'ms'
+      'ms',
+      true
     ),
     makeSumMetric(
       'pizza_latency_ms_total',
       metricsState.latency.pizzaCreationTotal,
-      'ms'
+      'ms',
+      true
     ),
   ];
 
