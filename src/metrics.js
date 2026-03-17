@@ -1,4 +1,5 @@
 const os = require('os');
+const fetch = require('node-fetch');
 const config = require('./config');
 
 const metricsState = {
@@ -92,27 +93,76 @@ function getMemoryUsage() {
   return Math.round(((total - free) / total) * 100);
 }
 
-function reportMetrics() {
+async function reportMetrics() {
   if (!config.metrics.endpointUrl) {
     return;
   }
 
   const payload = {
-    source: config.metrics.source,
-    metrics: {
-      requests: metricsState.requests,
-      auth: metricsState.auth,
-      pizzas: metricsState.pizzas,
-      activeUsers: metricsState.activeUsers.size,
-      cpu: getCpuUsage(),
-      memory: getMemoryUsage(),
-    },
+    resourceMetrics: [
+      {
+        scopeMetrics: [
+          {
+            metrics: [
+              {
+                name: 'active_users',
+                gauge: {
+                  dataPoints: [
+                    {
+                      asInt: metricsState.activeUsers.size,
+                      timeUnixNano: Date.now() * 1000000,
+                    },
+                  ],
+                },
+              },
+              {
+                name: 'cpu_usage',
+                gauge: {
+                  dataPoints: [
+                    {
+                      asInt: getCpuUsage(),
+                      timeUnixNano: Date.now() * 1000000,
+                    },
+                  ],
+                },
+              },
+              {
+                name: 'memory_usage',
+                gauge: {
+                  dataPoints: [
+                    {
+                      asInt: getMemoryUsage(),
+                      timeUnixNano: Date.now() * 1000000,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
   };
 
-  console.log('Metrics report:', JSON.stringify(payload));
+  try {
+    await fetch(config.metrics.endpointUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      auth: `${config.metrics.accountId}:${config.metrics.apiKey}`,
+    });
+  } catch (err) {
+    console.error('Failed to send metrics:', err.message);
+  }
 }
 
-setInterval(reportMetrics, 60000);
+const metricsReporter = setInterval(reportMetrics, 60000);
+
+if (typeof metricsReporter.unref === 'function') {
+  metricsReporter.unref();
+}
 
 module.exports = {
   requestTracker,
