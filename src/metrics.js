@@ -1,6 +1,13 @@
 const os = require('os');
 const fetch = require('node-fetch');
-const config = require('./config');
+
+const config = (() => {
+  try {
+    return require('./config.js');
+  } catch (_e) {
+    return require('./config.template.js');
+  }
+})();
 
 const metricsState = {
   requests: {
