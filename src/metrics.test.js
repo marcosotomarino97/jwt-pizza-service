@@ -56,4 +56,17 @@ describe('metrics module', () => {
 
     expect(true).toBe(true);
   });
+
+  test('metrics module reportMetrics setup does not crash', async () => {
+    const config = require('./config');
+
+    config.metrics = {
+      endpointUrl: 'http://localhost',
+      accountId: 'test',
+      apiKey: 'test',
+      source: 'jwt-pizza-service-test',
+    };
+
+    expect(config.metrics.endpointUrl).toBe('http://localhost');
+  });
 });
