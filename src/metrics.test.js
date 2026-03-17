@@ -79,4 +79,48 @@ describe('metrics module', () => {
     expect(typeof metrics.logoutUser).toBe('function');
     expect(typeof metrics.recordPizzaPurchase).toBe('function');
   });
+
+  test('reportMetrics sends metrics to grafana on interval', async () => {
+    jest.resetModules();
+    jest.useFakeTimers();
+
+    jest.doMock('node-fetch', () =>
+      jest.fn(() => Promise.resolve({ ok: true }))
+    );
+
+    const config = require('./config');
+    config.metrics = {
+      endpointUrl: 'http://example.com',
+      accountId: '123',
+      apiKey: 'abc',
+      source: 'jwt-pizza-service-test',
+    };
+
+    const fetch = require('node-fetch');
+    const metrics = require('./metrics');
+
+    metrics.recordAuth(true, 'user1');
+    metrics.recordPizzaPurchase({
+      success: true,
+      pizzas: 2,
+      revenue: 10,
+      latency: 50,
+    });
+
+    await jest.advanceTimersByTimeAsync(60000);
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith(
+      config.metrics.endpointUrl,
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          Authorization: expect.stringMatching(/^Basic /),
+        }),
+      })
+    );
+
+    jest.useRealTimers();
+  });
 });
