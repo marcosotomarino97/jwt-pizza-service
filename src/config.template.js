@@ -23,4 +23,11 @@ module.exports = {
     accountId: process.env.METRICS_ACCOUNT_ID || '',
     apiKey: process.env.METRICS_API_KEY || '',
   },
+
+  logging: {
+    source: 'jwt-pizza-service',
+    endpointUrl: process.env.LOGGING_ENDPOINT_URL || '',
+    accountId: process.env.LOGGING_ACCOUNT_ID || '',
+    apiKey: process.env.LOGGING_API_KEY || '',
+  },
 };
