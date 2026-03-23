@@ -4,7 +4,9 @@ const orderRouter = require('./routes/orderRouter.js');
 const franchiseRouter = require('./routes/franchiseRouter.js');
 const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
+const logger = require('./logger');
 const metrics = require('./metrics');
+
 const config = (() => {
   try {
     return require('./config.js');
@@ -16,6 +18,7 @@ const config = (() => {
 const app = express();
 app.use(metrics.requestTracker);
 app.use(express.json());
+app.use(logger.httpLogger);
 app.use(setAuthUser);
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
@@ -67,10 +70,13 @@ app.use('*', (req, res) => {
 });
 
 // Default error handler for all exceptions and errors.
-app.use((err, req, res, next) => {
+app.use(async (err, req, res, next) => {
+  await logger.logException(err, req);
+
   res
     .status(err.statusCode ?? 500)
     .json({ message: err.message, stack: err.stack });
+
   next();
 });
 
