@@ -1,5 +1,7 @@
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
+const logger = require('../logger.js');
+
 const config = (() => {
   try {
     return require('../config.js');
@@ -11,6 +13,7 @@ const config = (() => {
 const { StatusCodeError } = require('../endpointHelper.js');
 const { Role } = require('../model/model.js');
 const dbModel = require('./dbModel.js');
+
 class DB {
   constructor() {
     this.initialized =
@@ -54,6 +57,7 @@ class DB {
         [user.name, user.email, hashedPassword]
       );
       const userId = userResult.insertId;
+
       for (const role of user.roles) {
         switch (role.role) {
           case Role.Franchisee: {
@@ -80,6 +84,7 @@ class DB {
           }
         }
       }
+
       return { ...user, id: userId, password: undefined };
     } finally {
       connection.end();
@@ -95,6 +100,7 @@ class DB {
         [email]
       );
       const user = userResult[0];
+
       if (
         !user ||
         (password && !(await bcrypt.compare(password, user.password)))
@@ -111,7 +117,7 @@ class DB {
         return { objectId: r.objectId || undefined, role: r.role };
       });
 
-      return { ...user, roles: roles, password: undefined };
+      return { ...user, roles, password: undefined };
     } finally {
       connection.end();
     }
@@ -121,6 +127,7 @@ class DB {
     const connection = await this.getConnection();
     try {
       const params = [];
+
       if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
         params.push(`password='${hashedPassword}'`);
@@ -131,36 +138,38 @@ class DB {
       if (name) {
         params.push(`name='${name}'`);
       }
+
       if (params.length > 0) {
         const query = `UPDATE user SET ${params.join(', ')} WHERE id=${userId}`;
         await this.query(connection, query);
       }
+
       return this.getUser(email, password);
     } finally {
       connection.end();
     }
   }
+
   async getUsers(page = 1, limit = 10, name = '*') {
     const connection = await this.getConnection();
     try {
       const safePage = Number(page) > 0 ? Number(page) : 1;
       const safeLimit = Number(limit) > 0 ? Number(limit) : 10;
-
       const offset = (safePage - 1) * safeLimit;
 
       let whereClause = '';
       if (name && name !== '*') {
-        const safeName = name.replace(/'/g, "''"); // basic safety
+        const safeName = name.replace(/'/g, "''");
         whereClause = `WHERE name LIKE '%${safeName}%'`;
       }
 
       const users = await this.query(
         connection,
         `SELECT id, name, email
-       FROM user
-       ${whereClause}
-       ORDER BY id
-       LIMIT ${safeLimit + 1} OFFSET ${offset}`
+         FROM user
+         ${whereClause}
+         ORDER BY id
+         LIMIT ${safeLimit + 1} OFFSET ${offset}`
       );
 
       return users;
@@ -168,18 +177,7 @@ class DB {
       connection.end();
     }
   }
-  async deleteUser(userId) {
-    const connection = await this.getConnection();
-    try {
-      const [result] = await connection.execute(
-        'DELETE FROM user WHERE id = ?',
-        [userId]
-      );
-      return result.affectedRows > 0;
-    } finally {
-      connection.end();
-    }
-  }
+
   async loginUser(userId, token) {
     token = this.getTokenSignature(token);
     const connection = await this.getConnection();
@@ -228,15 +226,17 @@ class DB {
         `SELECT id, franchiseId, storeId, date FROM dinerOrder WHERE dinerId=? LIMIT ${offset},${config.db.listPerPage}`,
         [user.id]
       );
+
       for (const order of orders) {
-        let items = await this.query(
+        const items = await this.query(
           connection,
           `SELECT id, menuId, description, price FROM orderItem WHERE orderId=?`,
           [order.id]
         );
         order.items = items;
       }
-      return { dinerId: user.id, orders: orders, page };
+
+      return { dinerId: user.id, orders, page };
     } finally {
       connection.end();
     }
@@ -251,6 +251,7 @@ class DB {
         [user.id, order.franchiseId, order.storeId]
       );
       const orderId = orderResult.insertId;
+
       for (const item of order.items) {
         const menuId = await this.getID(connection, 'id', item.menuId, 'menu');
         await this.query(
@@ -259,6 +260,7 @@ class DB {
           [orderId, menuId, item.description, item.price]
         );
       }
+
       return { ...order, id: orderId };
     } finally {
       connection.end();
@@ -274,7 +276,7 @@ class DB {
           `SELECT id, name FROM user WHERE email=?`,
           [admin.email]
         );
-        if (adminUser.length == 0) {
+        if (adminUser.length === 0) {
           throw new StatusCodeError(
             `unknown user for franchise admin ${admin.email} provided`,
             404
@@ -358,6 +360,7 @@ class DB {
           );
         }
       }
+
       return [franchises, more];
     } finally {
       connection.end();
@@ -372,18 +375,22 @@ class DB {
         `SELECT objectId FROM userRole WHERE role='franchisee' AND userId=?`,
         [userId]
       );
+
       if (franchiseIds.length === 0) {
         return [];
       }
 
       franchiseIds = franchiseIds.map((v) => v.objectId);
+
       const franchises = await this.query(
         connection,
         `SELECT id, name FROM franchise WHERE id in (${franchiseIds.join(',')})`
       );
+
       for (const franchise of franchises) {
         await this.getFranchise(franchise);
       }
+
       return franchises;
     } finally {
       connection.end();
@@ -438,6 +445,20 @@ class DB {
     }
   }
 
+  async deleteUser(userId) {
+    const connection = await this.getConnection();
+    try {
+      const result = await this.query(
+        connection,
+        'DELETE FROM user WHERE id = ?',
+        [userId]
+      );
+      return result.affectedRows > 0;
+    } finally {
+      connection.end();
+    }
+  }
+
   getOffset(currentPage = 1, listPerPage) {
     return (currentPage - 1) * [listPerPage];
   }
@@ -450,13 +471,17 @@ class DB {
     return '';
   }
 
-  async query(connection, sql, params) {
+  async query(connection, sql, params = []) {
+    const start = Date.now();
     const [results] = await connection.execute(sql, params);
+    const durationMs = Date.now() - start;
+    await logger.logDb(sql, params, durationMs);
     return results;
   }
 
   async getID(connection, key, value, table) {
-    const [rows] = await connection.execute(
+    const rows = await this.query(
+      connection,
       `SELECT id FROM ${table} WHERE ${key}=?`,
       [value]
     );
@@ -467,7 +492,6 @@ class DB {
   }
 
   async getConnection() {
-    // Make sure the database is initialized before trying to get a connection.
     await this.initialized;
     return this._getConnection();
   }
