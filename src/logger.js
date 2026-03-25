@@ -124,6 +124,16 @@ class Logger {
     };
 
     res.on('finish', () => {
+      let parsedResBody = responseBody;
+      
+      try {
+        if (typeof parsedResBody === 'string') {
+          parsedResBody = JSON.parse(parsedResBody);
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+
       this.log({
         level:
           res.statusCode >= 500
@@ -138,8 +148,8 @@ class Logger {
           path: req.originalUrl,
           statusCode: res.statusCode,
           authorized: !!req.headers.authorization,
-          reqBody: req.body,
-          resBody: responseBody,
+          reqBody: this.sanitize(req.body),
+          resBody: this.sanitize(parsedResBody), 
         },
       });
     });
