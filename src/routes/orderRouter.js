@@ -138,7 +138,7 @@ orderRouter.post(
       },
       body: JSON.stringify(factoryRequestBody),
     });
-    
+
     console.log('FACTORY CALL REACHED');
 
     const j = await r.json();
