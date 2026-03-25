@@ -1,4 +1,5 @@
 const express = require('express');
+const fetch = require('node-fetch');
 const metrics = require('../metrics');
 const logger = require('../logger');
 
