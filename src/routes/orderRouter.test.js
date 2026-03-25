@@ -1,4 +1,7 @@
 const request = require('supertest');
+jest.mock('node-fetch', () => jest.fn());
+const fetch = require('node-fetch');
+
 const app = require('../service');
 const { Role, DB } = require('../database/database');
 
@@ -39,11 +42,14 @@ let menuId;
 let franchiseId;
 let storeId;
 
+beforeEach(() => {
+  fetch.mockReset();
+});
+
 beforeAll(async () => {
   admin = await createAdmin();
   diner = await registerUser('dinerpw');
 
-  // Add menu item
   const menuRes = await request(app)
     .put('/api/order/menu')
     .set('Authorization', `Bearer ${admin.token}`)
@@ -57,7 +63,6 @@ beforeAll(async () => {
   expect(menuRes.status).toBe(200);
   menuId = menuRes.body[menuRes.body.length - 1].id;
 
-  // Create franchise + store
   const frRes = await request(app)
     .post('/api/franchise')
     .set('Authorization', `Bearer ${admin.token}`)
@@ -94,9 +99,13 @@ test('non-admin cannot add menu item', async () => {
 });
 
 test('POST /api/order creates order (mock factory)', async () => {
-  global.fetch = jest.fn().mockResolvedValue({
+  fetch.mockResolvedValue({
     ok: true,
-    json: async () => ({ jwt: 'mock.jwt.token', reportUrl: 'http://mock.url' }),
+    status: 200,
+    json: async () => ({
+      jwt: 'mock.jwt.token',
+      reportUrl: 'http://mock.url',
+    }),
   });
 
   const res = await request(app)
