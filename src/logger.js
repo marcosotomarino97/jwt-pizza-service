@@ -125,12 +125,12 @@ class Logger {
 
     res.on('finish', () => {
       let parsedResBody = responseBody;
-      
+
       try {
         if (typeof parsedResBody === 'string') {
           parsedResBody = JSON.parse(parsedResBody);
         }
-      } catch (e) {
+      } catch (_e) {
         // ignore parse errors
       }
 
@@ -149,7 +149,7 @@ class Logger {
           statusCode: res.statusCode,
           authorized: !!req.headers.authorization,
           reqBody: this.sanitize(req.body),
-          resBody: this.sanitize(parsedResBody), 
+          resBody: this.sanitize(parsedResBody),
         },
       });
     });
