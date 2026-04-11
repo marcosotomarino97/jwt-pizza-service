@@ -151,3 +151,7 @@ jobs:
       - name: Push Docker image to ECR
         run: |
           docker push ${{ secrets.AWS_ACCOUNT }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/jwt-pizza-service:latest
+
+      - name: Deploy new container
+        run: |
+          aws ecs update-service --cluster jwt-pizza-service --service jwt-pizza-service --force-new-deployment
