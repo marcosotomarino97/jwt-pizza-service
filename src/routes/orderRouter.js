@@ -109,6 +109,20 @@ orderRouter.put(
   })
 );
 
+// deleteMenuItem TEMPORARY
+orderRouter.delete(
+  '/menu/:id',
+  authRouter.authenticateToken,
+  asyncHandler(async (req, res) => {
+    if (!req.user.isRole(Role.Admin)) {
+      throw new StatusCodeError('not authorized', 403);
+    }
+
+    await DB.deleteMenuItem(req.params.id);
+    res.send(await DB.getMenu());
+  })
+);
+
 // getOrders
 orderRouter.get(
   '/',
