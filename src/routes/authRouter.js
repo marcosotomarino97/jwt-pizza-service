@@ -126,19 +126,6 @@ authRouter.delete(
   })
 );
 
-// TEMPORARY: promote a known test account to admin
-authRouter.post(
-  '/debug/promote-admin',
-  asyncHandler(async (req, res) => {
-    const targetEmail = 'admin-marco@test.com';
-    const result = await DB.promoteUserToAdmin(targetEmail);
-    res.json({
-      message: 'admin role ensured',
-      email: result.email,
-      userId: result.userId,
-    });
-  })
-);
 
 async function setAuth(user) {
   const token = jwt.sign(user, config.jwtSecret);
