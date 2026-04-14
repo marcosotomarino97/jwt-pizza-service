@@ -121,40 +121,40 @@ class DB {
       connection.end();
     }
   }
-      async promoteUserToAdmin(email) {
-        const connection = await this.getConnection();
-        try {
-          const users = await this.query(
-            connection,
-            `SELECT id, email FROM user WHERE email=?`,
-            [email]
-          );
+  async promoteUserToAdmin(email) {
+    const connection = await this.getConnection();
+    try {
+      const users = await this.query(
+        connection,
+        `SELECT id, email FROM user WHERE email=?`,
+        [email]
+      );
 
-          if (users.length === 0) {
-            throw new StatusCodeError('target user not found', 404);
-          }
-
-          const userId = users[0].id;
-
-          const existingRole = await this.query(
-            connection,
-            `SELECT * FROM userRole WHERE userId=? AND role=? AND objectId=?`,
-            [userId, Role.Admin, 0]
-          );
-
-          if (existingRole.length === 0) {
-            await this.query(
-              connection,
-              `INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`,
-              [userId, Role.Admin, 0]
-            );
-          }
-
-          return { userId, email };
-        } finally {
-          connection.end();
-        }
+      if (users.length === 0) {
+        throw new StatusCodeError('target user not found', 404);
       }
+
+      const userId = users[0].id;
+
+      const existingRole = await this.query(
+        connection,
+        `SELECT * FROM userRole WHERE userId=? AND role=? AND objectId=?`,
+        [userId, Role.Admin, 0]
+      );
+
+      if (existingRole.length === 0) {
+        await this.query(
+          connection,
+          `INSERT INTO userRole (userId, role, objectId) VALUES (?, ?, ?)`,
+          [userId, Role.Admin, 0]
+        );
+      }
+
+      return { userId, email };
+    } finally {
+      connection.end();
+    }
+  }
 
   async updateUser(userId, name, email, password) {
     const connection = await this.getConnection();
